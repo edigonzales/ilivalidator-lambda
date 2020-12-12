@@ -1,0 +1,14 @@
+micronaut:
+  application:
+    name: lambdaMn
+
+app:
+  aws:
+    s3Bucket: ch.so.agi.ilivalidator
+    prefix: lambda
+  ilivalidator:
+    userFunctions:
+      - ch.so.agi.ilivalidator.ext.IsHttpResourceIoxPlugin
+      - ch.so.agi.ilivalidator.ext.AreaIoxPlugin
+      - ch.so.agi.ilivalidator.ext.IsValidDocumentsCycleIoxPlugin
+      - ch.so.agi.ilivalidator.ext.IsHttpResourceFromOerebMultilingualUriIoxPlugin

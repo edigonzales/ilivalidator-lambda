@@ -1,0 +1,51 @@
+Resources:
+  IlivalidatorLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: IlivalidatorLambdaRole
+      AssumeRolePolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::465066823493:policy/agi-s3
+  RolePolicies: 
+    Type: "AWS::IAM::Policy"
+    Properties: 
+      PolicyName: "IlivalidatorLambdaFunctionLogPolicy"
+      PolicyDocument: 
+        Version: "2012-10-17"
+        Statement: 
+          - Effect: "Allow"
+            Action: "logs:CreateLogGroup"
+            Resource: "*"
+          - Effect: "Allow"
+            Action:
+              - "logs:CreateLogStream"
+              - "logs:PutLogEvents"
+            Resource: "arn:aws:logs:eu-central-1:465066823493:log-group:/aws/lambda/ilivalidator:*"
+      Roles: 
+        - Ref: "IlivalidatorLambdaRole"
+  IlivalidatorLambdaFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: ilivalidator
+      Role: !GetAtt IlivalidatorLambdaRole.Arn
+      Runtime: java8.al2
+      Handler: ch.so.agi.ilivalidator.IlivalidatorRequestHandler
+      Code:
+        ZipFile: |
+        
+      MemorySize: 2048
+      Timeout: 900
+      ReservedConcurrentExecutions: 25
+      Environment:
+        Variables:
+          ILI_CACHE: /tmp
+  LogsLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/ilivalidator"
+      RetentionInDays: 7

@@ -1,0 +1,6 @@
+applicationType: function
+defaultPackage: ch.so.agi.ilivalidator
+testFramework: junit
+sourceLanguage: java
+buildTool: gradle
+features: [app-name, aws-lambda, gradle, java, junit, logback, readme, shade, yaml]
