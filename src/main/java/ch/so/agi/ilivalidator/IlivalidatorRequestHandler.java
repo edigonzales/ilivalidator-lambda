@@ -3,18 +3,12 @@ import io.micronaut.context.annotation.Property;
 import io.micronaut.core.annotation.Introspected;
 import io.micronaut.core.io.ResourceLoader;
 import io.micronaut.function.aws.MicronautRequestHandler;
-import io.micronaut.inject.BeanDefinition;
 import software.amazon.awssdk.core.ResponseInputStream;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
-import software.amazon.awssdk.services.s3.model.ListObjectsRequest;
-import software.amazon.awssdk.services.s3.model.ListObjectsResponse;
 import software.amazon.awssdk.services.s3.model.ObjectCannedACL;
 import software.amazon.awssdk.services.s3.model.PutObjectAclRequest;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
-import software.amazon.awssdk.services.s3.model.S3Object;
-import com.amazonaws.services.lambda.runtime.Context;
-import com.amazonaws.services.lambda.runtime.LambdaLogger;
 
 import java.io.File;
 import java.io.IOException;
@@ -25,9 +19,7 @@ import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.util.HashMap;
 import java.util.List;
-import java.util.ListIterator;
 import java.util.Map;
-import java.util.Optional;
 
 import javax.inject.Inject;
 
@@ -84,8 +76,6 @@ public class IlivalidatorRequestHandler extends MicronautRequestHandler<Validati
         } catch (IOException e) {
             throw new RuntimeException(e.getMessage());
         }
-                    
-        logger.info("input: " + input);
         
         String key = input.getDatafile();
         String subfolder = key.substring(0, key.lastIndexOf("/"));

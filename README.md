@@ -23,7 +23,6 @@ Das kann anscheinend nicht via Cloudformation gesetzt werden, da es als Cookie g
 
 ## Lambda
 ### Erstellen der Funktion
-
 ```
 aws cloudformation create-stack --stack-name ilivalidator-lambda-stack \
   --template-body file://ilivalidator_stack.yml \
@@ -39,6 +38,6 @@ aws cloudformation delete-stack --stack-name ilivalidator-lambda-stack
 Version/Alias wird (noch) nicht im Cloudformation Stack behandelt, sondern manuell (siehe nächstes Kapitel).
 
 ### Version / Alias (Staging-Umgebungen)
-Zuerst muss im `unqualified` Qualifier eine Version der Funktion publiziert werden: `Actions - Publish new Version`. Mit `Actions - Create alias` können Aliasnamen erstellt werden, z.B. `prod`, `int` und `test`. Jedem Alias muss mit einer Version verknüpft werden. Dem Test-Alias wird `$LATEST` zugewiesen. 
+Zuerst muss im `unqualified` Qualifier eine Version der Funktion publiziert werden: `Actions - Publish new Version`. Mit `Actions - Create alias` können Aliasnamen erstellt werden, z.B. `PROD`, `INT` und `TEST`. Jedem Alias muss mit einer Version verknüpft werden. Dem Test-Alias wird `$LATEST` zugewiesen. 
 
-Will man in dem Prod-Alias eine neue Version zuweisen, muss man in den Prod-Qualifier wechsel `Qualifiers - prod` und anschliessen die neue Version deployen `Actions - Publish new Version.`
+Will man in dem Prod-Alias eine neue Version zuweisen, muss man im Unqualified-Qualifier zuerst eine neue Version deployen, in den `Qualifiers - PROD` wechseln und unter `Alias configuration` dem Alias die neue Version zuweisen.
