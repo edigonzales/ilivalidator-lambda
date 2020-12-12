@@ -1,17 +1,24 @@
 package ch.so.agi.ilivalidator;
 import io.micronaut.context.annotation.Property;
 import io.micronaut.core.annotation.Introspected;
+import io.micronaut.core.io.ResourceLoader;
 import io.micronaut.function.aws.MicronautRequestHandler;
+import io.micronaut.inject.BeanDefinition;
 import software.amazon.awssdk.core.ResponseInputStream;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.ListObjectsRequest;
 import software.amazon.awssdk.services.s3.model.ListObjectsResponse;
+import software.amazon.awssdk.services.s3.model.ObjectCannedACL;
+import software.amazon.awssdk.services.s3.model.PutObjectAclRequest;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.model.S3Object;
+import com.amazonaws.services.lambda.runtime.Context;
+import com.amazonaws.services.lambda.runtime.LambdaLogger;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -21,6 +28,8 @@ import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
 import java.util.Optional;
+
+import javax.inject.Inject;
 
 import ch.ehi.basics.settings.Settings;
 import ch.interlis.iom_j.itf.ItfReader;
@@ -35,21 +44,35 @@ import ch.interlis.iox_j.plugins.IoxPlugin;
 import org.interlis2.validator.Validator;
 import ch.interlis.iox_j.validator.InterlisFunction;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 @Introspected
-public class IlivalidatorRequestHandler extends MicronautRequestHandler<ValidationSettings, ValidationSettings> {        
-    private static S3Client s3 = S3Client.builder().build();
-    
+public class IlivalidatorRequestHandler extends MicronautRequestHandler<ValidationSettings, ValidationSettings> { 
+    private static final Logger logger = LoggerFactory.getLogger(IlivalidatorRequestHandler.class);
+
     @Property(name = "app.aws.s3Bucket")
     private String s3Bucket;
     
     @Property(name = "app.aws.prefix")
     private String prefix;
         
+    @Property(name = "app.ilivalidator.models")
+    private List<String> modelsList;
+    
+    @Property(name = "app.ilivalidator.config")
+    private List<String> configList;
+    
     @Property(name = "app.ilivalidator.userFunctions")
-    List<String> userFunctionList;
+    private List<String> userFunctionList;
+    
+    @Inject
+    private ResourceLoader resourceLoader;
+    
+    private static S3Client s3 = S3Client.builder().build();
     
     @Override
-    public ValidationSettings execute(ValidationSettings input) {        
+    public ValidationSettings execute(ValidationSettings input) {                       
         // Set connect and read timeout to handle failing interlis repositories.
         System.setProperty("sun.net.client.defaultConnectTimeout", "10000");
         System.setProperty("sun.net.client.defaultReadTimeout", "10000");
@@ -61,21 +84,22 @@ public class IlivalidatorRequestHandler extends MicronautRequestHandler<Validati
         } catch (IOException e) {
             throw new RuntimeException(e.getMessage());
         }
-            
-        String key = input.getDatafile();
+                    
+        logger.info("input: " + input);
         
-        String[] keys = key.split("/");
-        String subfolder = keys[0];
-        String dataFileName = keys[1];
+        String key = input.getDatafile();
+        String subfolder = key.substring(0, key.lastIndexOf("/"));
+        String dataFileName = key.substring(key.lastIndexOf("/")+1);
+        
         GetObjectRequest getObjectRequest = GetObjectRequest.builder()
                 .bucket(s3Bucket)
                 .key(key)
                 .build();
 
-        ResponseInputStream is = s3.getObject(getObjectRequest);
+        ResponseInputStream ris = s3.getObject(getObjectRequest);
         File dataFile = Paths.get(tmpDirectory.toFile().getAbsolutePath(), dataFileName).toFile();
         try {
-            Files.copy(is, dataFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+            Files.copy(ris, dataFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
         } catch (IOException e) {
             throw new RuntimeException(e.getMessage());
         }
@@ -84,7 +108,6 @@ public class IlivalidatorRequestHandler extends MicronautRequestHandler<Validati
         Settings settings = new Settings();
         settings.setValue(Validator.SETTING_ILIDIRS, Validator.SETTING_DEFAULT_ILIDIRS);
         String logFileName = dataFile.getAbsolutePath() + ".log"; 
-        //System.out.println("logFileName: " + logFileName);
         settings.setValue(Validator.SETTING_LOGFILE, logFileName);
         settings.setValue(Validator.SETTING_ALL_OBJECTS_ACCESSIBLE, Validator.TRUE);
         
@@ -102,43 +125,34 @@ public class IlivalidatorRequestHandler extends MicronautRequestHandler<Validati
             throw new RuntimeException(e.getMessage());
         }
         
-        // Zusätzliche Modelle (z.B. Validierungsmodelle) und Config-Files
-        // herunterladen.
+        // Zusätzliche Modelle (z.B. Validierungsmodelle)
         // Modelle sollten in einer Modellablage sein. Eventuell gibt es
         // exotische Prüfungen, die noch nicht via View funktionieren.
+        for (String modelFileName : modelsList) {
+            InputStream is = resourceLoader.getResourceAsStream("classpath:"+modelFileName).get();
+            File modelFile = Paths.get(tmpDirectory.toFile().getAbsolutePath(), modelFileName).toFile();
+            try {
+                Files.copy(is, modelFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+            } catch (IOException e) {
+                throw new RuntimeException(e.getMessage());
+            }
+        }
+        
         // Config-Files sollten mit einem Datarepo funktionieren (Issue
         // auf github gemacht).
-        ListObjectsRequest listObjects = ListObjectsRequest
-                .builder()
-                .bucket(s3Bucket)
-                .prefix(prefix)
-                .build();
-        ListObjectsResponse res = s3.listObjects(listObjects);
-        List<S3Object> objects = res.contents();
-        GetObjectRequest gor;
-        ResponseInputStream ris;
-        for (ListIterator iterVals = objects.listIterator(); iterVals.hasNext(); ) {
-            S3Object s3object = (S3Object) iterVals.next();
-            String additionalFileKey = s3object.key();
-            if (s3object.key().matches("(?i).*\\.(ili|toml)$")) {
-                gor = GetObjectRequest.builder()
-                        .bucket(s3Bucket)
-                        .key(additionalFileKey)
-                        .build();
-                ris = s3.getObject(gor);
-                String additionalFileName = additionalFileKey.substring(additionalFileKey.lastIndexOf("/")+1);
-                File additionalFile = Paths.get(tmpDirectory.toFile().getAbsolutePath(), additionalFileName).toFile();
-                try {
-                    Files.copy(ris, additionalFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
-                } catch (IOException e) {
-                    throw new RuntimeException(e.getMessage());
-                }
+        for (String configFileName : configList) {
+            InputStream is = resourceLoader.getResourceAsStream("classpath:"+configFileName).get();
+            File configFile = Paths.get(tmpDirectory.toFile().getAbsolutePath(), configFileName).toFile();
+            try {
+                Files.copy(is, configFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+            } catch (IOException e) {
+                throw new RuntimeException(e.getMessage());
             }
-         }
+        }
         
         // TODO: expose "use config file" to user / gui
         
-        // Config-Datei anwenden, falls eine vorhanden ist. Es gilt
+        // Config-Datei anwenden, falls sie vorhanden ist. Es gilt
         // die Konvention: Kleingeschriebener Modellname == Config-Datei ohne Dateiextension. 
         String doConfigFile = "true";
         if (doConfigFile != null) {
@@ -166,7 +180,8 @@ public class IlivalidatorRequestHandler extends MicronautRequestHandler<Validati
         
         // Upload logfile.
         s3.putObject(PutObjectRequest.builder().bucket(s3Bucket).key(key).build(), Paths.get(logFileName));
-        
+        s3.putObjectAcl(PutObjectAclRequest.builder().bucket(s3Bucket).key(key).acl(ObjectCannedACL.PUBLIC_READ).build());
+
         return input;
     }
     

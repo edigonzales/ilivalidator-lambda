@@ -26,7 +26,7 @@ public class IlivalidatorRequestHandlerTest {
     private static IlivalidatorRequestHandler ilivalidatorRequestHandler;
     private static S3Client s3;
     private static String s3Bucket = "ch.so.agi.ilivalidator";
-    private static String subFolder = "test";
+    private static String subFolder = "test/local";
     
     @BeforeAll
     public static void setupServer() {
@@ -52,7 +52,6 @@ public class IlivalidatorRequestHandlerTest {
         File datafile = new File("src/test/data/254900.itf");
         String key = subFolder + "/" + datafile.getName();
         s3.putObject(PutObjectRequest.builder().bucket(s3Bucket).key(key).build(), datafile.toPath());
-        log.info("data file: " + key);
         
         // Run validation
         ValidationSettings validationSettings = new ValidationSettings(); 
@@ -66,6 +65,7 @@ public class IlivalidatorRequestHandlerTest {
         // Clean up
         ArrayList<ObjectIdentifier> toDelete = new ArrayList<ObjectIdentifier>();
         toDelete.add(ObjectIdentifier.builder().key(key).build());
+        toDelete.add(ObjectIdentifier.builder().key(key + ".log").build());
         
         DeleteObjectsRequest dor = DeleteObjectsRequest.builder()
                 .bucket(s3Bucket)

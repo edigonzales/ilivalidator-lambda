@@ -7,6 +7,11 @@ app:
     s3Bucket: ch.so.agi.ilivalidator
     prefix: lambda
   ilivalidator:
+    models:
+      - SO_Nutzungsplanung_20171118.ili
+    config:
+      - so_nutzungsplanung_20171118.toml
+      - gb2av.toml
     userFunctions:
       - ch.so.agi.ilivalidator.ext.IsHttpResourceIoxPlugin
       - ch.so.agi.ilivalidator.ext.AreaIoxPlugin

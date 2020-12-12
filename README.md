@@ -1,10 +1,44 @@
-## Handler
+# ilivalidator-lambda
 
-[AWS Lambda Handler](https://docs.aws.amazon.com/lambda/latest/dg/java-handler.html)
+## Todo
+Siehe https://github.com/edigonzales/ilivalidator-web-service-client
 
-Handler: ch.so.agi.ilivalidator.BookRequestHandler
+## Build
+```
+./gradlew clean shadowJar
+```
 
-## Feature aws-lambda documentation
+## Testing
 
-- [Micronaut AWS Lambda Function documentation](https://micronaut-projects.github.io/micronaut-aws/latest/guide/index.html#lambda)
+### Lokal
+Während der Tests werden Daten im Verzeichnis `test/local` im Bucket `ch.so.agi.ilivalidator` ausgetauscht.
 
+### AWS
+```
+{
+  "datafile": "test/remote/254900.itf"
+}
+```
+Das kann anscheinend nicht via Cloudformation gesetzt werden, da es als Cookie gespeichert wird.
+
+## Lambda
+### Erstellen der Funktion
+
+```
+aws cloudformation create-stack --stack-name ilivalidator-lambda-stack \
+  --template-body file://ilivalidator_stack.yml \
+  --capabilities CAPABILITY_NAMED_IAM
+```
+
+```
+aws cloudformation delete-stack --stack-name ilivalidator-lambda-stack
+```
+
+`Code` darf nicht NULL sein. Im Bucket `ch.so.agi.ilivalidator` liegt die Jar-Datei `build/libs/ilivalidator-lambda-1.0.9999.jar`. Diese dient nur dem erstmaligen Anlegen des Stacks. Anschliessend wird via CI/CD deployed.
+
+Version/Alias wird (noch) nicht im Cloudformation Stack behandelt, sondern manuell (siehe nächstes Kapitel).
+
+### Version / Alias (Staging-Umgebungen)
+Zuerst muss im `unqualified` Qualifier eine Version der Funktion publiziert werden: `Actions - Publish new Version`. Mit `Actions - Create alias` können Aliasnamen erstellt werden, z.B. `prod`, `int` und `test`. Jedem Alias muss mit einer Version verknüpft werden. Dem Test-Alias wird `$LATEST` zugewiesen. 
+
+Will man in dem Prod-Alias eine neue Version zuweisen, muss man in den Prod-Qualifier wechsel `Qualifiers - prod` und anschliessen die neue Version deployen `Actions - Publish new Version.`

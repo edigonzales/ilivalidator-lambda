@@ -36,14 +36,37 @@ Resources:
       Runtime: java8.al2
       Handler: ch.so.agi.ilivalidator.IlivalidatorRequestHandler
       Code:
-        ZipFile: |
-        
+        S3Bucket: "ch.so.agi.ilivalidator"
+        S3Key: "build/libs/ilivalidator-lambda-1.0.9999.jar"
       MemorySize: 2048
       Timeout: 900
       ReservedConcurrentExecutions: 25
       Environment:
         Variables:
           ILI_CACHE: /tmp
+  version:
+    Type: AWS::Lambda::Version
+    Properties:
+      FunctionName: !Ref IlivalidatorLambdaFunction
+      Description: v1
+  aliasProd:
+    Type: AWS::Lambda::Alias
+    Properties:
+      FunctionName: !Ref IlivalidatorLambdaFunction
+      FunctionVersion: !GetAtt version.Version
+      Name: PROD
+  aliasInt:
+    Type: AWS::Lambda::Alias
+    Properties:
+      FunctionName: !Ref IlivalidatorLambdaFunction
+      FunctionVersion: !GetAtt version.Version
+      Name: INT
+  aliasTest:
+    Type: AWS::Lambda::Alias
+    Properties:
+      FunctionName: !Ref IlivalidatorLambdaFunction
+      FunctionVersion: $LATEST
+      Name: TEST
   LogsLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:

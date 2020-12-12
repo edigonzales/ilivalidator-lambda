@@ -10,11 +10,11 @@ public class ValidationSettings {
 
     @NonNull
     @NotBlank
-    String datafile;
+    private String datafile;
     
-    String logfile;
+    private String logfile;
     
-    boolean valid;
+    private boolean valid;
     
     public ValidationSettings() {}
 
