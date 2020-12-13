@@ -41,3 +41,8 @@ Version/Alias wird (noch) nicht im Cloudformation Stack behandelt, sondern manue
 Zuerst muss im `unqualified` Qualifier eine Version der Funktion publiziert werden: `Actions - Publish new Version`. Mit `Actions - Create alias` können Aliasnamen erstellt werden, z.B. `PROD`, `INT` und `TEST`. Jedem Alias muss mit einer Version verknüpft werden. Dem Test-Alias wird `$LATEST` zugewiesen. 
 
 Will man in dem Prod-Alias eine neue Version zuweisen, muss man im Unqualified-Qualifier zuerst eine neue Version deployen, in den `Qualifiers - PROD` wechseln und unter `Alias configuration` dem Alias die neue Version zuweisen.
+
+## Micronaut
+```
+% mn create-function-app ch.so.agi.ilivalidator.lambda --features=aws-lambda
+```
